@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Task, Category, TaskHistory
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth.models import User
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -51,3 +52,15 @@ class TaskHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskHistory
         fields = ['task', 'completed_at']
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        user = User(username=validated_data['username'])
+        user.set_password(validated_data['password'])
+        user.save()
+        return user    

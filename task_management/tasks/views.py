@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import viewsets, status
 from .models import Task, Category, TaskHistory
 from .serializers import TaskSerializer, CategorySerializer, TaskHistorySerializer
@@ -9,6 +9,53 @@ from django.utils import timezone
 from django_filters import rest_framework as filters
 from rest_framework.filters import OrderingFilter
 from datetime import timedelta
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework.views import APIView
+
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+
+        user = authenticate(username=username, password=password)
+
+        if user is not None:
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'status': 'success',
+                'user_id': user.id,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token)
+            })
+        else:
+            return Response({'status': 'failed', 'message': 'Invalid credentials'}, status=401)
+        
+class RegisterView(APIView):
+    
+    def post(self, request):
+        username = request.data['username']
+        password = request.data['password']
+
+        if not username or not password:
+            return Response({'status': 'failed', 'message': 'Username and password are required'}, status=400)
+        user = User(username=username)
+        user.set_password(password)
+        user.save()
+        refresh = RefreshToken.for_user(user)
+
+        return Response(
+            {
+                "status": "success",
+                'user_id': user.id,
+                'refresh': str(refresh),
+                'access': str(refresh.access_token)
+            })        
 
 class TaskFilter(filters.FilterSet):
     status = filters.ChoiceFilter(choices=[('Pending', 'Pending'), ('Completed', 'Completed')])
@@ -36,6 +83,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.DjangoFilterBackend, OrderingFilter]
     filterset_class = TaskFilter
     ordering_fields = ['due_date', 'priority']
+    authentication_classes = [JWTAuthentication]
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
