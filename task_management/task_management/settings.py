@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'tasks',
     'rest_framework',
     'rest_framework_simplejwt',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -146,3 +147,5 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+AUTH_USER_MODEL = 'users.CustomUser'

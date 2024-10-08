@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import viewsets, status
-from .models import Task, Category, TaskHistory
-from .serializers import TaskSerializer, CategorySerializer, TaskHistorySerializer
+from .models import Task, Category, TaskHistory, Notification, SharedTask
+from .serializers import TaskSerializer, CategorySerializer, TaskHistorySerializer, NotificationSerializer
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
@@ -11,51 +11,14 @@ from rest_framework.filters import OrderingFilter
 from datetime import timedelta
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework.views import APIView
+from rest_framework.exceptions import PermissionDenied
 
 
-class LoginView(APIView):
-    permission_classes = [AllowAny]
+User = get_user_model()
 
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-
-        user = authenticate(username=username, password=password)
-
-        if user is not None:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                'status': 'success',
-                'user_id': user.id,
-                'refresh': str(refresh),
-                'access': str(refresh.access_token)
-            })
-        else:
-            return Response({'status': 'failed', 'message': 'Invalid credentials'}, status=401)
         
-class RegisterView(APIView):
-    
-    def post(self, request):
-        username = request.data['username']
-        password = request.data['password']
-
-        if not username or not password:
-            return Response({'status': 'failed', 'message': 'Username and password are required'}, status=400)
-        user = User(username=username)
-        user.set_password(password)
-        user.save()
-        refresh = RefreshToken.for_user(user)
-
-        return Response(
-            {
-                "status": "success",
-                'user_id': user.id,
-                'refresh': str(refresh),
-                'access': str(refresh.access_token)
-            })        
 
 class TaskFilter(filters.FilterSet):
     status = filters.ChoiceFilter(choices=[('Pending', 'Pending'), ('Completed', 'Completed')])
@@ -76,6 +39,10 @@ class CategoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+def create_task_notification(user, task):
+    message = f'Task "{task.title}" is due on {task.due_date}.'
+    Notification.objects.create(user=user, task=task, message=message)
+
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
@@ -86,10 +53,37 @@ class TaskViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        task = serializer.save(user=self.request.user)
+        create_task_notification(self.request.user, task)
 
     def get_queryset(self):
-        return Task.objects.filter(user=self.request.user)
+        user = self.request.user
+        owned_tasks = Task.objects.filter(user=user)
+        shared_tasks = Task.objects.filter(sharedtask__shared_with=user)
+        return owned_tasks | shared_tasks 
+        
+    
+    def perform_update(self, serializer):
+        task = self.get_object()
+        user = self.request.user
+        create_task_notification(self.request.user, task)
+        if task.user == user or SharedTask.objects.filter(task=task, shared_with=user, can_edit=True).exists():
+            serializer.save()
+        else:
+            raise PermissionDenied("You don't have permission to edit this task.")
+
+    @action(detail=True, methods=['post'], url_path='share')
+    def share_task(self, request, pk=None):
+        task = self.get_object()
+        shared_with = User.objects.get(pk=request.data['user_id'])
+        can_edit = request.data.get('can_edit', False)
+
+        if SharedTask.objects.filter(task=task, shared_with=shared_with).exists():
+            return Response({"message": "Task is already shared with this user."}, status=status.HTTP_400_BAD_REQUEST)
+
+        SharedTask.objects.create(task=task, shared_with=shared_with, can_edit=can_edit)
+        return Response({"message": "Task shared successfully."}, status=status.HTTP_200_OK)        
+        
     
     @action(detail=True, methods=['patch'], url_path='mark_complete')
     def mark_complete(self, request, pk=None):
@@ -133,3 +127,30 @@ class TaskHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return TaskHistory.objects.filter(task__user=self.request.user)
+    
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    # Fetch unread notifications
+    @action(detail=False, methods=['get'], url_path='unread')
+    def mark_notifications_as_read(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"message": "All unread notifications marked as read."})
+    
+    @action(detail=False, methods=['patch'], url_path='mark_read')
+    def mark_read(self, request):
+        notification_ids = request.data.get('notification_ids', [])
+        notifications = Notification.objects.filter(id__in=notification_ids, user=request.user)
+
+        if not notifications.exists():
+            return Response({"detail": "No notifications found."}, status=status.HTTP_404_NOT_FOUND)
+
+        notifications.update(is_read=True)
+        return Response({"message": "Notifications marked as read."}, status=status.HTTP_200_OK) 
+    
+       

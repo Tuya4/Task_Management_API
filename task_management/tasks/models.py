@@ -1,10 +1,14 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
+
 
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='categories')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='categories')
 
     def __str__(self):
         return self.name
@@ -32,7 +36,7 @@ class Task(models.Model):
     priority = models.CharField(max_length=6, choices=PRIORITY_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Pending')
     completed_at = models.DateTimeField(null=True, blank=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tasks')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tasks')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     recurrence = models.CharField(max_length=50, choices=RECURRENCE_CHOICES, default='None')
     next_due_date = models.DateField(null=True, blank=True)
@@ -46,3 +50,22 @@ class TaskHistory(models.Model):
 
     def __str__(self):
         return f"Task '{self.task.title}' completed on {self.completed_at}"    
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, on_delete=models.CASCADE)
+    message = models.CharField(max_length=255)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'Notification for {self.user.username}: {self.message}'
+    
+class SharedTask(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='sharedtask')
+    shared_with = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    can_edit = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'Task {self.task.title} shared with {self.shared_with.username}'    
