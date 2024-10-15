@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 
@@ -41,6 +43,9 @@ class Task(models.Model):
     recurrence = models.CharField(max_length=50, choices=RECURRENCE_CHOICES, default='None')
     next_due_date = models.DateField(null=True, blank=True)
 
+    def clean(self):
+        if self.due_date < timezone.now():
+            raise ValidationError("Due date cannot be in the past.")
     def __str__(self):
         return self.title
     

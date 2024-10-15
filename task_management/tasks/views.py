@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import viewsets, status
 from .models import Task, Category, TaskHistory, Notification, SharedTask
 from .serializers import TaskSerializer, CategorySerializer, TaskHistorySerializer, NotificationSerializer
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.utils import timezone
 from django_filters import rest_framework as filters
@@ -186,22 +186,55 @@ class TaskHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self): 
         return TaskHistory.objects.filter(task__user=self.request.user)
     
+# class NotificationViewSet(viewsets.ModelViewSet):
+#     queryset = Notification.objects.all()
+#     serializer_class = NotificationSerializer
+#     permission_classes = [IsAuthenticated]
+
+#     def get_queryset(self):
+#         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+#     # Fetch unread notifications
+#     @action(detail=False, methods=['get'], url_path='unread')
+#     def mark_notifications_as_read(self, request):
+#         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+#         return Response({"message": "All unread notifications marked as read."})
+    
+#     @action(detail=False, methods=['patch'], url_path='mark_read')
+#     def mark_read(self, request):
+#         notification_ids = request.data.get('notification_ids', [])
+#         notifications = Notification.objects.filter(id__in=notification_ids, user=request.user)
+
+#         if not notifications.exists():
+#             return Response({"detail": "No notifications found."}, status=status.HTTP_404_NOT_FOUND)
+
+#         notifications.update(is_read=True)
+#         return Response({"message": "Notifications marked as read."}, status=status.HTTP_200_OK) 
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user)
+        # Fetch notifications for the current user, sorted by creation date (newest first)
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
-    # Fetch unread notifications
+    # Fetch unread notifications only
     @action(detail=False, methods=['get'], url_path='unread')
-    def mark_notifications_as_read(self, request):
+    def get_unread_notifications(self, request):
+        unread_notifications = Notification.objects.filter(user=request.user, is_read=False).order_by('-created_at')
+        serializer = self.get_serializer(unread_notifications, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # Mark all unread notifications as read
+    @action(detail=False, methods=['post'], url_path='mark_all_read')
+    def mark_all_notifications_as_read(self, request):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-        return Response({"message": "All unread notifications marked as read."})
-    
+        return Response({"message": "All unread notifications marked as read."}, status=status.HTTP_200_OK)
+
+    # Mark selected notifications as read
     @action(detail=False, methods=['patch'], url_path='mark_read')
-    def mark_read(self, request):
+    def mark_selected_notifications_as_read(self, request):
         notification_ids = request.data.get('notification_ids', [])
         notifications = Notification.objects.filter(id__in=notification_ids, user=request.user)
 
@@ -209,6 +242,11 @@ class NotificationViewSet(viewsets.ModelViewSet):
             return Response({"detail": "No notifications found."}, status=status.HTTP_404_NOT_FOUND)
 
         notifications.update(is_read=True)
-        return Response({"message": "Notifications marked as read."}, status=status.HTTP_200_OK) 
-    
+        return Response({"message": "Selected notifications marked as read."}, status=status.HTTP_200_OK)
+        
+    @api_view(['GET'])
+    def user_notifications(request):
+        notifications = Notification.objects.filter(user=request.user, read=False)
+        notifications_data = [{"message": n.message, "created_at": n.created_at} for n in notifications]
+        return Response(notifications_data)
        
