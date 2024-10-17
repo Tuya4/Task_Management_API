@@ -72,43 +72,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         else:
             raise PermissionDenied("You don't have permission to edit this task.")
 
-    # @action(detail=True, methods=['post'], url_path='share')
-    # def share_task(self, request, pk=None):
-    #     task = self.get_object()
-    #     shared_with = User.objects.get(pk=request.data['user_id'])
-    #     can_edit = request.data.get('can_edit', False)
 
-    #     if SharedTask.objects.filter(task=task, shared_with=shared_with).exists():
-    #         return Response({"message": "Task is already shared with this user."}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     SharedTask.objects.create(task=task, shared_with=shared_with, can_edit=can_edit)
-    #     return Response({"message": "Task shared successfully."}, status=status.HTTP_200_OK)        
-    # @action(detail=True, methods=['post'], url_path='share')
-    # def share_task(self, request, pk=None):
-    #     task = self.get_object()  # Fetch the task using the task ID (pk)
-        
-    #     # Get the user_id from the request data
-    #     try:
-    #         user_id = request.data['user_id']
-    #         shared_with = User.objects.get(pk=user_id)  # Get the user to share the task with
-    #     except KeyError:
-    #         return Response({"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-    #     except User.DoesNotExist:
-    #         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    #     # Check if the task is already shared with the user
-    #     can_edit = request.data.get('can_edit', False)  # Check if user can edit the task
-    #     if SharedTask.objects.filter(task=task, shared_with=shared_with).exists():
-    #         return Response({"message": "Task is already shared with this user."}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     # Share the task and store the share record
-    #     SharedTask.objects.create(task=task, shared_with=shared_with, can_edit=can_edit)
-
-    #     # Return a custom success message with task title and username
-    #     return Response(
-    #         {"message": f"Task '{task.title}' shared with {shared_with.username}."},
-    #         status=status.HTTP_200_OK
-    #     )
     @action(detail=True, methods=['post'], url_path='share')
     def share_task(self, request, pk=None):
     # Explicitly filter by the primary key to ensure only one task is fetched
@@ -185,31 +149,7 @@ class TaskHistoryViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self): 
         return TaskHistory.objects.filter(task__user=self.request.user)
-    
-# class NotificationViewSet(viewsets.ModelViewSet):
-#     queryset = Notification.objects.all()
-#     serializer_class = NotificationSerializer
-#     permission_classes = [IsAuthenticated]
 
-#     def get_queryset(self):
-#         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
-
-#     # Fetch unread notifications
-#     @action(detail=False, methods=['get'], url_path='unread')
-#     def mark_notifications_as_read(self, request):
-#         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-#         return Response({"message": "All unread notifications marked as read."})
-    
-#     @action(detail=False, methods=['patch'], url_path='mark_read')
-#     def mark_read(self, request):
-#         notification_ids = request.data.get('notification_ids', [])
-#         notifications = Notification.objects.filter(id__in=notification_ids, user=request.user)
-
-#         if not notifications.exists():
-#             return Response({"detail": "No notifications found."}, status=status.HTTP_404_NOT_FOUND)
-
-#         notifications.update(is_read=True)
-#         return Response({"message": "Notifications marked as read."}, status=status.HTTP_200_OK) 
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
