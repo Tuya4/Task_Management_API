@@ -50,10 +50,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class TaskHistorySerializer(serializers.ModelSerializer):
     task = TaskSerializer()
+    user = serializers.StringRelatedField()
 
     class Meta:
         model = TaskHistory
-        fields = ['task', 'completed_at']
+        fields = ['task', 'completed_at', 'user']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

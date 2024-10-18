@@ -148,7 +148,8 @@ class TaskHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self): 
-        return TaskHistory.objects.filter(task__user=self.request.user)
+        return TaskHistory.objects.filter(user=self.request.user)
+        #return TaskHistory.objects.filter(task__user=self.request.user)
 
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all()
