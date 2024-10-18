@@ -17,8 +17,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'due_date', 'priority', 'status', 'completed_at', 'user', 'category', 'category_id', 'recurrence', 'next_due_date']
-        read_only_fields = ['completed_at', 'user', 'next_due_date']
+        fields = ['id', 'title', 'description', 'due_date', 'priority', 'status', 'completed_at', 'category', 'category_id', 'recurrence', 'next_due_date']
+        read_only_fields = ['completed_at', 'next_due_date']
     
     def validate(self, data):
         # Prevent editing of completed tasks unless reverting to Pending
