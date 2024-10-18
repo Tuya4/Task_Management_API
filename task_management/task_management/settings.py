@@ -24,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-qfe=1^p&%ynt@t09l8dc$ug&$v!3_s7q$fa^+ucp@v3w!z7l(j'
+#SECRET_KEY = 'edX00k2hxrujiA4xZcQzgLiWAgygiaLC'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
@@ -91,9 +92,7 @@ WSGI_APPLICATION = 'task_management.wsgi.application'
 #         'PORT': '5432',
 #     }
 # }
-# DATABASES = {
-#     'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
-# }
+
 DATABASES = {'default' : dj_database_url.config(conn_max_age=600, ssl_require=True)}
 
 # Password validation

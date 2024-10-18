@@ -52,7 +52,7 @@ class Task(models.Model):
 class TaskHistory(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='history')
     completed_at = models.DateTimeField()
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='task_histories')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='task_histories')
 
     def __str__(self):
         return f"Task '{self.task.title}' completed by {self.user.username} on {self.completed_at}"    
