@@ -113,27 +113,6 @@ class TaskViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['patch'], url_path='mark_complete')
     def mark_complete(self, request, pk=None):
-        
-        # task = self.get_object()
-        # task.status = 'Completed'
-        # task.completed_at = timezone.now()
-
-        # # Save the task to TaskHistory
-        # TaskHistory.objects.create(task=task, completed_at=task.completed_at)
-
-        # # Handle recurrence
-        # if task.recurrence != 'None':
-        #     if task.recurrence == 'Daily':
-        #         task.next_due_date = task.due_date + timedelta(days=1)
-        #     elif task.recurrence == 'Weekly':
-        #         task.next_due_date = task.due_date + timedelta(weeks=1)
-        #     elif task.recurrence == 'Monthly':
-        #         task.next_due_date = task.due_date + timedelta(days=30)
-            
-        #     task.status = 'Pending'  # Reset status for the next task occurrence
-
-        # task.save()
-        # return Response({'status': 'Task marked as complete'})
         try:
             task = self.get_object()
             if task.due_date is None:

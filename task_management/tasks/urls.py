@@ -10,6 +10,4 @@ router.register(r'notifications', NotificationViewSet, basename='notifications')
 
 urlpatterns = [
     path('', include(router.urls)),
-    # path('register/', RegisterView.as_view()),
-    # path('login/', LoginView.as_view(), name='login'),
 ]
