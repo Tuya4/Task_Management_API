@@ -67,8 +67,12 @@ class TaskViewSet(viewsets.ModelViewSet):
         task = self.get_object()
         user = self.request.user
         create_task_notification(self.request.user, task)
+        if task.status == 'Completed' and serializer.validated_data.get('status') != 'Pending':
+            raise PermissionDenied("This task is marked as complete and cannot be edited.")
+        
         if task.user == user or SharedTask.objects.filter(task=task, shared_with=user, can_edit=True).exists():
             serializer.save()
+            create_task_notification(self.request.user, task)
         else:
             raise PermissionDenied("You don't have permission to edit this task.")
 
