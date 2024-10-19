@@ -110,26 +110,56 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='mark_complete')
     def mark_complete(self, request, pk=None):
         
-        task = self.get_object()
-        task.status = 'Completed'
-        task.completed_at = timezone.now()
+        # task = self.get_object()
+        # task.status = 'Completed'
+        # task.completed_at = timezone.now()
 
-        # Save the task to TaskHistory
-        TaskHistory.objects.create(task=task, completed_at=task.completed_at)
+        # # Save the task to TaskHistory
+        # TaskHistory.objects.create(task=task, completed_at=task.completed_at)
 
-        # Handle recurrence
-        if task.recurrence != 'None':
-            if task.recurrence == 'Daily':
-                task.next_due_date = task.due_date + timedelta(days=1)
-            elif task.recurrence == 'Weekly':
-                task.next_due_date = task.due_date + timedelta(weeks=1)
-            elif task.recurrence == 'Monthly':
-                task.next_due_date = task.due_date + timedelta(days=30)
+        # # Handle recurrence
+        # if task.recurrence != 'None':
+        #     if task.recurrence == 'Daily':
+        #         task.next_due_date = task.due_date + timedelta(days=1)
+        #     elif task.recurrence == 'Weekly':
+        #         task.next_due_date = task.due_date + timedelta(weeks=1)
+        #     elif task.recurrence == 'Monthly':
+        #         task.next_due_date = task.due_date + timedelta(days=30)
             
-            task.status = 'Pending'  # Reset status for the next task occurrence
+        #     task.status = 'Pending'  # Reset status for the next task occurrence
 
-        task.save()
-        return Response({'status': 'Task marked as complete'})
+        # task.save()
+        # return Response({'status': 'Task marked as complete'})
+        try:
+            task = self.get_object()
+            if task.due_date is None:
+                return Response({'error': 'Task due date is missing'}, status=status.HTTP_400_BAD_REQUEST)
+            task.status = 'Completed'
+            task.completed_at = timezone.now()
+
+            # Save the task to TaskHistory
+            TaskHistory.objects.create(task=task, completed_at=task.completed_at, user=self.request.user if request.user.is_authenticated else None)
+
+            # Handle recurrence
+            if task.recurrence != 'None':
+                if task.recurrence == 'Daily':
+                    task.next_due_date = task.due_date + timedelta(days=1)
+                elif task.recurrence == 'Weekly':
+                    task.next_due_date = task.due_date + timedelta(weeks=1)
+                elif task.recurrence == 'Monthly':
+                    task.next_due_date = task.due_date + timedelta(days=30)
+                else:
+                    return Response({'error': 'Invalid recurrence type'}, status=status.HTTP_400_BAD_REQUEST)    
+            
+                task.status = 'Pending'  # Reset status for the next task occurrence
+
+            task.save()
+            return Response({'status': 'Task marked as complete'}, status=status.HTTP_200_OK)
+    
+        except Task.DoesNotExist:
+            return Response({'error': 'Task not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['patch'], url_path='mark_incomplete')
     def mark_incomplete(self, request, pk=None):
@@ -148,7 +178,7 @@ class TaskHistoryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self): 
-        return TaskHistory.objects.filter(user=self.request.user)
+        return TaskHistory.objects.filter(task__user=self.request.user)
         #return TaskHistory.objects.filter(task__user=self.request.user)
 
 class NotificationViewSet(viewsets.ModelViewSet):
