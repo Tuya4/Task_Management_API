@@ -138,7 +138,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             task.completed_at = timezone.now()
 
             # Save the task to TaskHistory
-            TaskHistory.objects.create(task=task, completed_at=task.completed_at, user=self.request.user if request.user.is_authenticated else None)
+            TaskHistory.objects.create(task=task, completed_at=task.completed_at, user=self.request.user)
 
             # Handle recurrence
             if task.recurrence != 'None':
