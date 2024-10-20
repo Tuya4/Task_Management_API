@@ -52,7 +52,6 @@ class TaskSerializer(serializers.ModelSerializer):
 
         return super().update(instance, validated_data)
     
-
 class TaskHistorySerializer(serializers.ModelSerializer):
     task = TaskSerializer()
     user = serializers.StringRelatedField()
