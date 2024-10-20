@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Task, Category, TaskHistory, Notification
+from .models import Task, Category, TaskHistory, Notification, SharedTask
 from django.utils import timezone
 from datetime import timedelta
 from django.contrib.auth import get_user_model
@@ -14,11 +14,16 @@ class CategorySerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True)
+    shared_with_users = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
-        fields = ['id', 'title', 'description', 'due_date', 'priority', 'status', 'completed_at', 'category', 'category_id', 'recurrence', 'next_due_date', 'user']
-        read_only_fields = ['completed_at', 'next_due_date', 'user']
+        fields = ['id', 'title', 'description', 'due_date', 'priority', 'status', 'completed_at', 'category', 'category_id', 'recurrence', 'next_due_date', 'user', 'shared_with_users']
+        read_only_fields = ['completed_at', 'next_due_date', 'user', 'shared_with_users']
+
+    def get_shared_with_users(self, obj):
+        shared_tasks = SharedTask.objects.filter(task=obj)
+        return [shared_task.shared_with.username for shared_task in shared_tasks]    
     
     def validate(self, data):
         # Prevent editing of completed tasks unless reverting to Pending
